@@ -1,135 +1,123 @@
-require('dotenv').config();
 const express = require('express');
-const bodyParser = require('body-parser');
+const crypto = require('crypto'); // 署名検証用
 const axios = require('axios');
+const fs = require('fs');
+const path = require('path');
+require('dotenv').config();
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+app.use(express.json());
 
 const CHANNEL_ACCESS_TOKEN = process.env.CHANNEL_ACCESS_TOKEN;
 const CHANNEL_SECRET = process.env.CHANNEL_SECRET;
+const RICHMENU_IMAGE_PATH = path.join(__dirname, 'richmenu.jpg'); // 画像のパス
 
-app.use(bodyParser.json());
+// 署名の検証関数
+function validateSignature(req) {
+    const signature = req.headers['x-line-signature'];
+    const body = JSON.stringify(req.body);
+    const hash = crypto.createHmac('sha256', CHANNEL_SECRET).update(body).digest('base64');
+    return hash === signature;
+}
 
-// LINE Webhookエンドポイント
+// リッチメニューを作成する関数
+async function createRichMenu() {
+    try {
+        const richMenuConfig = {
+            size: { width: 2500, height: 843 },
+            selected: true,
+            name: "richmenu1",
+            chatBarText: "メニューを開く",
+            areas: [
+                { bounds: { x: 0, y: 0, width: 833, height: 421 }, action: { type: "postback", data: "A" } },
+                { bounds: { x: 833, y: 0, width: 833, height: 421 }, action: { type: "postback", data: "B" } },
+                { bounds: { x: 1666, y: 0, width: 834, height: 421 }, action: { type: "postback", data: "C" } },
+                { bounds: { x: 0, y: 421, width: 833, height: 422 }, action: { type: "postback", data: "D" } },
+                { bounds: { x: 833, y: 421, width: 833, height: 422 }, action: { type: "postback", data: "E" } },
+                { bounds: { x: 1666, y: 421, width: 834, height: 422 }, action: { type: "postback", data: "F" } }
+            ]
+        };
+
+        // リッチメニュー作成
+        const richMenuResponse = await axios.post(
+            'https://api.line.me/v2/bot/richmenu',
+            richMenuConfig,
+            { headers: { 'Authorization': `Bearer ${CHANNEL_ACCESS_TOKEN}`, 'Content-Type': 'application/json' } }
+        );
+
+        const richMenuId = richMenuResponse.data.richMenuId;
+        console.log("リッチメニュー作成成功:", richMenuId);
+
+        // 画像をアップロード
+        const imageBuffer = fs.readFileSync(RICHMENU_IMAGE_PATH);
+        await axios.post(
+            `https://api.line.me/v2/bot/richmenu/${richMenuId}/content`,
+            imageBuffer,
+            { headers: { 'Authorization': `Bearer ${CHANNEL_ACCESS_TOKEN}`, 'Content-Type': 'image/jpeg' } }
+        );
+        console.log("リッチメニュー画像アップロード成功");
+
+        // リッチメニューを全ユーザーに適用
+        await axios.post(
+            `https://api.line.me/v2/bot/user/all/richmenu/${richMenuId}`,
+            {},
+            { headers: { 'Authorization': `Bearer ${CHANNEL_ACCESS_TOKEN}` } }
+        );
+        console.log("リッチメニュー適用成功");
+
+    } catch (error) {
+        console.error("リッチメニュー作成エラー:", error.response?.data || error.message);
+    }
+}
+
+// Webhookエンドポイント（署名検証を追加）
 app.post('/webhook', async (req, res) => {
+    if (!validateSignature(req)) {
+        return res.status(401).send("Invalid signature");
+    }
+
     const events = req.body.events;
-    
-    // イベントがない場合は何もしない
     if (!events || events.length === 0) {
         return res.status(200).send("No events");
     }
 
-    // イベントごとに処理
     for (const event of events) {
-        if (event.type === 'message' && event.message.type === 'text') {
-            await handleMessageEvent(event);
-        } else if (event.type === 'postback') {
-            await handlePostbackEvent(event);
+        if (event.type === 'postback') {
+            let replyMessage = "選択肢が不明です。";
+            switch (event.postback.data) {
+                case "A":
+                    replyMessage = "統括安全衛生責任者\n1. 仮メッセージ１\n2. 仮メッセージ２\n3. 仮メッセージ３";
+                    break;
+                case "B":
+                    replyMessage = "Bのアクション";
+                    break;
+                case "C":
+                    replyMessage = "Cのアクション";
+                    break;
+                case "D":
+                    replyMessage = "Dのアクション";
+                    break;
+                case "E":
+                    replyMessage = "Eのアクション";
+                    break;
+                case "F":
+                    replyMessage = "Fのアクション";
+                    break;
+            }
+
+            await axios.post('https://api.line.me/v2/bot/message/reply', {
+                replyToken: event.replyToken,
+                messages: [{ type: "text", text: replyMessage }]
+            }, { headers: { 'Authorization': `Bearer ${CHANNEL_ACCESS_TOKEN}`, 'Content-Type': 'application/json' } });
+
+            console.log("返信:", replyMessage);
         }
     }
-
     res.status(200).send("OK");
 });
 
-// メッセージイベントの処理
-async function handleMessageEvent(event) {
-    const { replyToken, message } = event;
-
-    if (message.text === "リッチメニュー") {
-        await sendRichMenu(event.source.userId);
-    }
-}
-
-// Postbackイベントの処理
-async function handlePostbackEvent(event) {
-    const { replyToken, postback } = event;
-
-    let replyMessage = "選択肢が不明です。";
-    if (postback.data === "統括安全衛生責任者") {
-        replyMessage = "仮メッセージ１";
-    } else if (postback.data === "安全衛生管理者") {
-        replyMessage = "仮メッセージ２";
-    } else if (postback.data === "衛生管理者") {
-        replyMessage = "仮メッセージ３";
-    }
-
-    await replyText(replyToken, replyMessage);
-}
-
-// リッチメニューを送信
-async function sendRichMenu(userId) {
-    const richMenuData = {
-        size: { width: 2500, height: 1686 },
-        selected: true,
-        name: "richmenu",
-        chatBarText: "メニューを開く",
-        areas: [
-            {
-                bounds: { x: 0, y: 0, width: 833, height: 843 },
-                action: { type: "postback", data: "統括安全衛生責任者" }
-            },
-            {
-                bounds: { x: 833, y: 0, width: 833, height: 843 },
-                action: { type: "postback", data: "安全衛生管理者" }
-            },
-            {
-                bounds: { x: 1666, y: 0, width: 833, height: 843 },
-                action: { type: "postback", data: "衛生管理者" }
-            },
-            {
-                bounds: { x: 0, y: 843, width: 833, height: 843 },
-                action: { type: "message", text: "ボタンD" }
-            },
-            {
-                bounds: { x: 833, y: 843, width: 833, height: 843 },
-                action: { type: "message", text: "ボタンE" }
-            },
-            {
-                bounds: { x: 1666, y: 843, width: 833, height: 843 },
-                action: { type: "message", text: "ボタンF" }
-            }
-        ]
-    };
-
-    try {
-        const richMenuResponse = await axios.post('https://api.line.me/v2/bot/richmenu', richMenuData, {
-            headers: { 
-                'Authorization': `Bearer ${CHANNEL_ACCESS_TOKEN}`,
-                'Content-Type': 'application/json'
-            }
-        });
-
-        const richMenuId = richMenuResponse.data.richMenuId;
-
-        await axios.post(`https://api.line.me/v2/bot/user/${userId}/richmenu/${richMenuId}`, {}, {
-            headers: { 
-                'Authorization': `Bearer ${CHANNEL_ACCESS_TOKEN}`
-            }
-        });
-
-    } catch (error) {
-        console.error("リッチメニュー送信エラー:", error.response ? error.response.data : error.message);
-    }
-}
-
-// テキストメッセージを返信
-async function replyText(replyToken, text) {
-    try {
-        await axios.post('https://api.line.me/v2/bot/message/reply', {
-            replyToken: replyToken,
-            messages: [{ type: "text", text: text }]
-        }, {
-            headers: { 
-                'Authorization': `Bearer ${CHANNEL_ACCESS_TOKEN}`,
-                'Content-Type': 'application/json'
-            }
-        });
-    } catch (error) {
-        console.error("メッセージ送信エラー:", error.response ? error.response.data : error.message);
-    }
-}
-
-app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
+// サーバー起動時にリッチメニュー作成
+app.listen(3000, async () => {
+    console.log("Server running on port 3000");
+    await createRichMenu();
 });
