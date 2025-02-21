@@ -84,11 +84,11 @@ app.post('/webhook', async (req, res) => {
     }
 
     for (const event of events) {
-        if (event.type === 'postback') {
+        if (event.type === 'message' && event.message.type === 'text') {
             let replyMessage = "選択肢が不明です。";
             let messages = [];
     
-            switch (event.postback.data) {
+            switch (event.message.text) {
                 case "A":
                     messages = [{
                         type: "text",
@@ -98,25 +98,25 @@ app.post('/webhook', async (req, res) => {
                                 {
                                     type: "action",
                                     action: {
-                                        type: "postback",
+                                        type: "message",
                                         label: "総括安全衛生管理者",
-                                        data: "ROLE_A"
+                                        text: "総括安全衛生管理者"
                                     }
                                 },
                                 {
                                     type: "action",
                                     action: {
-                                        type: "postback",
+                                        type: "message",
                                         label: "安全責任者",
-                                        data: "ROLE_B"
+                                        text: "安全責任者"
                                     }
                                 },
                                 {
                                     type: "action",
                                     action: {
-                                        type: "postback",
+                                        type: "message",
                                         label: "衛生管理者",
-                                        data: "ROLE_C"
+                                        text: "衛生管理者"
                                     }
                                 }
                             ]
@@ -124,15 +124,15 @@ app.post('/webhook', async (req, res) => {
                     }];
                     break;
     
-                case "ROLE_A":
+                case "総括安全衛生管理者":
                     replyMessage = "総括用のテキストを表示しています";
                     messages = [{ type: "text", text: replyMessage }];
                     break;
-                case "ROLE_B":
+                case "安全責任者":
                     replyMessage = "安全責任者用のテキストを表示しています";
                     messages = [{ type: "text", text: replyMessage }];
                     break;
-                case "ROLE_C":
+                case "衛生管理者":
                     replyMessage = "衛生管理者用のテキストを表示しています";
                     messages = [{ type: "text", text: replyMessage }];
                     break;
@@ -151,6 +151,7 @@ app.post('/webhook', async (req, res) => {
             console.log("返信:", replyMessage);
         }
     }
+    
     
     res.status(200).send("OK");
 });
