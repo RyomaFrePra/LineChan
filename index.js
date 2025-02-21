@@ -30,12 +30,12 @@ async function createRichMenu() {
             chatBarText: "メニューを開く",
 
             areas: [
-                { bounds: { x: 0, y: 0, width: 833, height: 833 }, action: { type: "postback", "data": "A" } },
-                { bounds: { x: 833, y: 0, width: 833, height: 833 }, action: { type: "postback", "data": "B" } },
-                { bounds: { x: 1666, y: 0, width: 833, height: 833 }, action: { type: "postback", "data": "C" } },
-                { bounds: { x: 0, y: 833, width: 833, height: 833 }, action: { type: "postback", "data": "D" } },
-                { bounds: { x: 833, y: 833, width: 833, height: 833 }, action: { type: "postback", "data": "E" } },
-                { bounds: { x: 1666, y: 833, width: 833, height: 833 }, action: { type: "postback", "data": "F" } }
+                { bounds: { x: 0, y: 0, width: 833, height: 833 }, action: { type: "message", "data": "A" } },
+                { bounds: { x: 833, y: 0, width: 833, height: 833 }, action: { type: "message", "data": "B" } },
+                { bounds: { x: 1666, y: 0, width: 833, height: 833 }, action: { type: "message", "data": "C" } },
+                { bounds: { x: 0, y: 833, width: 833, height: 833 }, action: { type: "message", "data": "D" } },
+                { bounds: { x: 833, y: 833, width: 833, height: 833 }, action: { type: "message", "data": "E" } },
+                { bounds: { x: 1666, y: 833, width: 833, height: 833 }, action: { type: "message", "data": "F" } }
             ]
 
         };
