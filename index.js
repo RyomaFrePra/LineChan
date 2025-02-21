@@ -86,35 +86,72 @@ app.post('/webhook', async (req, res) => {
     for (const event of events) {
         if (event.type === 'postback') {
             let replyMessage = "選択肢が不明です。";
+            let messages = [];
+    
             switch (event.postback.data) {
                 case "A":
-                    replyMessage = "統括安全衛生責任者\n1. 仮メッセージ１\n2. 仮メッセージ２\n3. 仮メッセージ３";
+                    messages = [{
+                        type: "text",
+                        text: "役職を選択してください。",
+                        quickReply: {
+                            items: [
+                                {
+                                    type: "action",
+                                    action: {
+                                        type: "postback",
+                                        label: "総括安全衛生管理者",
+                                        data: "ROLE_A"
+                                    }
+                                },
+                                {
+                                    type: "action",
+                                    action: {
+                                        type: "postback",
+                                        label: "安全責任者",
+                                        data: "ROLE_B"
+                                    }
+                                },
+                                {
+                                    type: "action",
+                                    action: {
+                                        type: "postback",
+                                        label: "衛生管理者",
+                                        data: "ROLE_C"
+                                    }
+                                }
+                            ]
+                        }
+                    }];
                     break;
-                case "B":
-                    replyMessage = "Bのアクション";
+    
+                case "ROLE_A":
+                    replyMessage = "総括用のテキストを表示しています";
+                    messages = [{ type: "text", text: replyMessage }];
                     break;
-                case "C":
-                    replyMessage = "Cのアクション";
+                case "ROLE_B":
+                    replyMessage = "安全責任者用のテキストを表示しています";
+                    messages = [{ type: "text", text: replyMessage }];
                     break;
-                case "D":
-                    replyMessage = "Dのアクション";
+                case "ROLE_C":
+                    replyMessage = "衛生管理者用のテキストを表示しています";
+                    messages = [{ type: "text", text: replyMessage }];
                     break;
-                case "E":
-                    replyMessage = "Eのアクション";
-                    break;
-                case "F":
-                    replyMessage = "Fのアクション";
+    
+                default:
+                    replyMessage = "無効な選択肢です。";
+                    messages = [{ type: "text", text: replyMessage }];
                     break;
             }
-
+    
             await axios.post('https://api.line.me/v2/bot/message/reply', {
                 replyToken: event.replyToken,
-                messages: [{ type: "text", text: replyMessage }]
+                messages: messages
             }, { headers: { 'Authorization': `Bearer ${CHANNEL_ACCESS_TOKEN}`, 'Content-Type': 'application/json' } });
-
+    
             console.log("返信:", replyMessage);
         }
     }
+    
     res.status(200).send("OK");
 });
 
