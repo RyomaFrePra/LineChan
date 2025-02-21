@@ -24,7 +24,7 @@ function validateSignature(req) {
 async function createRichMenu() {
     try {
         const richMenuConfig = {
-            size: { width: 2500, height: 843 },
+            size: { width: 2500, height: 1686 },
             selected: true,
             name: "richmenu1",
             chatBarText: "メニューを開く",
